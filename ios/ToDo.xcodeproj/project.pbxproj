@@ -150,7 +150,6 @@
 				7A6145F6F940A087FB98A57B /* Pods-ToDo-ToDoTests.debug.xcconfig */,
 				E74E1972D0F9DE0B474C16DE /* Pods-ToDo-ToDoTests.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
