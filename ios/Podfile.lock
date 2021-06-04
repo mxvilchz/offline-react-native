@@ -252,6 +252,8 @@ PODS:
     - React-jsi (= 0.64.2)
     - React-perflogger (= 0.64.2)
   - React-jsinspector (0.64.2)
+  - react-native-background-upload (6.2.4):
+    - React
   - react-native-flipper (0.92.0):
     - React-Core
   - react-native-image-picker (4.0.3):
@@ -322,9 +324,13 @@ PODS:
     - React-cxxreact (= 0.64.2)
     - React-jsi (= 0.64.2)
     - React-perflogger (= 0.64.2)
+  - rn-fetch-blob (0.12.0):
+    - React-Core
   - RNBackgroundFetch (4.0.2):
     - React-Core
   - RNCMaskedView (0.1.11):
+    - React
+  - RNFS (2.18.0):
     - React
   - RNGestureHandler (1.10.3):
     - React-Core
@@ -406,6 +412,7 @@ DEPENDENCIES:
   - React-jsi (from `../node_modules/react-native/ReactCommon/jsi`)
   - React-jsiexecutor (from `../node_modules/react-native/ReactCommon/jsiexecutor`)
   - React-jsinspector (from `../node_modules/react-native/ReactCommon/jsinspector`)
+  - react-native-background-upload (from `../node_modules/react-native-background-upload`)
   - react-native-flipper (from `../node_modules/react-native-flipper`)
   - react-native-image-picker (from `../node_modules/react-native-image-picker`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
@@ -421,8 +428,10 @@ DEPENDENCIES:
   - React-RCTVibration (from `../node_modules/react-native/Libraries/Vibration`)
   - React-runtimeexecutor (from `../node_modules/react-native/ReactCommon/runtimeexecutor`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - rn-fetch-blob (from `../node_modules/rn-fetch-blob`)
   - RNBackgroundFetch (from `../node_modules/react-native-background-fetch`)
   - "RNCMaskedView (from `../node_modules/@react-native-community/masked-view`)"
+  - RNFS (from `../node_modules/react-native-fs`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
@@ -476,6 +485,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/jsiexecutor"
   React-jsinspector:
     :path: "../node_modules/react-native/ReactCommon/jsinspector"
+  react-native-background-upload:
+    :path: "../node_modules/react-native-background-upload"
   react-native-flipper:
     :path: "../node_modules/react-native-flipper"
   react-native-image-picker:
@@ -506,10 +517,14 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/runtimeexecutor"
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  rn-fetch-blob:
+    :path: "../node_modules/rn-fetch-blob"
   RNBackgroundFetch:
     :path: "../node_modules/react-native-background-fetch"
   RNCMaskedView:
     :path: "../node_modules/@react-native-community/masked-view"
+  RNFS:
+    :path: "../node_modules/react-native-fs"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNReanimated:
@@ -550,6 +565,7 @@ SPEC CHECKSUMS:
   React-jsi: 67747b9722f6dab2ffe15b011bcf6b3f2c3f1427
   React-jsiexecutor: 80c46bd381fd06e418e0d4f53672dc1d1945c4c3
   React-jsinspector: cc614ec18a9ca96fd275100c16d74d62ee11f0ae
+  react-native-background-upload: b85fac36cfee561c8b3a282e5700e50dc98249c5
   react-native-flipper: 51d058827cc04d89cd23cc4b1aa2d724c3d820bf
   react-native-image-picker: 474cf2c33c2b6671da53d293a16c97995f0aec15
   react-native-safe-area-context: f0906bf8bc9835ac9a9d3f97e8bde2a997d8da79
@@ -565,8 +581,10 @@ SPEC CHECKSUMS:
   React-RCTVibration: 24600e3b1aaa77126989bc58b6747509a1ba14f3
   React-runtimeexecutor: a9904c6d0218fb9f8b19d6dd88607225927668f9
   ReactCommon: 149906e01aa51142707a10665185db879898e966
+  rn-fetch-blob: f065bb7ab7fb48dd002629f8bdcb0336602d3cba
   RNBackgroundFetch: 635d82e1e185b235c1fe787f29517507f87450e0
   RNCMaskedView: 0e1bc4bfa8365eba5fbbb71e07fbdc0555249489
+  RNFS: 3ab21fa6c56d65566d1fb26c2228e2b6132e5e32
   RNGestureHandler: a479ebd5ed4221a810967000735517df0d2db211
   RNReanimated: 9c13c86454bfd54dab7505c1a054470bfecd2563
   RNScreens: bf59f17fbf001f1025243eeed5f19419d3c11ef2

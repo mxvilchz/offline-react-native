@@ -3,10 +3,11 @@
 import React from 'react';
 import { View, ScrollView, Alert } from 'react-native';
 import { Text, Input, Button, BottomSheet, ListItem, Image } from 'react-native-elements';
-import { database } from '../models';
 import moment from 'moment';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { database } from '../models';
 
 const CreateScreen = ({ navigation, route }) => {
   const [title, setTitle] = React.useState('');
@@ -65,12 +66,15 @@ const CreateScreen = ({ navigation, route }) => {
     }
 
     const resource = response?.assets && response?.assets[0];
+
+    // const uri = Platform.OS === 'ios' ? resource.uri : resource.uri.replace('file://', '');
     const todosCollection = database.collections.get('todo');
     await database.action(async () => {
       await todosCollection.create(todo => {
         todo.title = title;
-        todo.posterImage = resource.base64;
+        todo.posterImage = resource;
         todo.description = description;
+        todo.sync = false;
         todo.releaseDateAt = moment().unix();
       });
     });

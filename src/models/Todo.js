@@ -1,13 +1,15 @@
 /* eslint-disable prettier/prettier */
 import { Model } from '@nozbe/watermelondb';
-import { field, date } from '@nozbe/watermelondb/decorators';
+import { field, date, json } from '@nozbe/watermelondb/decorators';
 
+const sanitizeReactions = json => json
 export default class Todo extends Model {
   static table = 'todo';
 
   @field('title') title;
-  @field('poster_image') posterImage;
+  @json('poster_image', sanitizeReactions) posterImage;
   @field('description') description;
+  @field('sync') sync;
   @date('release_date_at') releaseDateAt;
 
   // getTodo() {
