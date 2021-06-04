@@ -9,4 +9,27 @@ export default class Todo extends Model {
   @field('poster_image') posterImage;
   @field('description') description;
   @date('release_date_at') releaseDateAt;
+
+  // getTodo() {
+  //   return {
+  //     title: this.title,
+  //     posterImage: this.posterImage,
+  //     description: this.description,
+  //     releaseDateAt: this.releaseDateAt,
+  //   };
+  // }
+
+  // updateTodo = async (data) => {
+  //   await this.update(todo => {
+  //     todo.title = data.title;
+  //     todo.posterImage = data.posterImage;
+  //     todo.description = data.title;
+  //     todo.releaseDateAt = data.releaseDateAt;
+  //   });
+  // }
+
+  // async deleteTodo() {
+  //   await this.markAsDeleted();
+  //   await this.destroyPermanently();
+  // }
 }

@@ -16,3 +16,15 @@ export const database = new Database({
   modelClasses: [Todo],
   actionsEnabled: true,
 });
+
+if (__DEV__) {
+  // Import connectDatabases function
+  const connectDatabases = require('react-native-flipper-databases').default;
+
+  // Import required DBDrivers
+  const WatermelonDBDriver = require('react-native-flipper-databases/src/drivers/watermelondb').default;
+
+  connectDatabases([
+    new WatermelonDBDriver(database), // Pass in database definition
+  ]);
+}
