@@ -1,8 +1,9 @@
+/* eslint-disable no-shadow */
 /* eslint-disable prettier/prettier */
 import { Model } from '@nozbe/watermelondb';
 import { field, date, json } from '@nozbe/watermelondb/decorators';
 
-const sanitizeReactions = json => json
+const sanitizeReactions = json => json;
 export default class Todo extends Model {
   static table = 'todo';
 
