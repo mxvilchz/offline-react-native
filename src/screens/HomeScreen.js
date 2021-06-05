@@ -3,20 +3,25 @@
 /* eslint-disable prettier/prettier */
 import React from 'react';
 import { FlatList, Platform, TouchableOpacity, View } from 'react-native';
-import { Icon, ListItem, Text } from 'react-native-elements';
+import { Icon, Text, Button } from 'react-native-elements';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../models';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackgroundFetch from 'react-native-background-fetch';
 import { Q } from '@nozbe/watermelondb';
 import Upload from 'react-native-background-upload';
+import TodoItem from '../components/TodoItem';
 
 const HomeScreen = ({ navigation, todos }) => {
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <Icon name="plus" type="material-community" onPress={() => navigation.navigate('Nuevo')} />
+        <Button
+          onPress={() => navigation.navigate('Nuevo')}
+          icon={<Icon name="plus" type="material-community"  />}
+          type="outline"
+        />
       ),
       headerRightContainerStyle: {
         paddingRight: 15,
@@ -69,44 +74,26 @@ const HomeScreen = ({ navigation, todos }) => {
       const image = todo[0].posterImage;
       const uri = Platform.OS === 'ios' ? image.uri : image.uri.replace('file://', '');
       if (uri){
-        Upload.getFileInfo(uri).then(metadata => {
-          const uploadOpts = Object.assign(
-            {
-              path: uri,
-              method: 'POST',
-              headers: {
-                'content-type': metadata.mimeType, // server requires a content-type header,
-                'todo-header': JSON.stringify({
-                  title : todo[0].title,
-                  description : todo[0].description,
-                  releaseDateAt: todo[0].releaseDateAt,
-                }),
-              },
-            },
-            {
-              url: 'http://96.126.110.93:8081/upload_raw',
-              // field: 'uploaded_media',
-              type: 'raw',
-            },
-            {
-              notification: {
-                enabled: true,
-              },
-              useUtf8Charset: true,
-            }
-          );
 
-          Upload.startUpload(uploadOpts).then((uploadId) => {
-            console.log('Upload started');
-            Upload.addListener('progress', uploadId, (data) => {
-              console.log(`Progress: ${data.progress}%`);
-            });
-            Upload.addListener('error', uploadId, (data) => {
-              console.log(`Error: ${data.error}%`);
-            });
-            Upload.addListener('cancelled', uploadId, (data) => {
-              console.log('Cancelled!');
-            });
+          const options = {
+            url: 'http://96.126.110.93:8081/upload_multipart',
+            path: uri,
+            method: 'POST',
+            field: 'uploaded_media',
+            type: 'multipart',
+            notification: {
+              enabled: true,
+              autoclear: true,
+              onProgressTitle: 'Cargando...',
+              onProgressMessage: 'Cargando ' + todo[0].title,
+              onCompleteTitle: 'Carga finalizado',
+              onCompleteMessage: 'Tu imagen ha sido subido',
+              onErrorTitle: 'Error en la carga',
+              onErrorMessage: 'Ocurrió un error al cargar la imagen',
+            },
+          };
+
+          Upload.startUpload(options).then((uploadId) => {
             Upload.addListener('completed', uploadId, async (data) => {
               // data includes responseCode: number and responseBody: Object
               const todoUpdate = await database.collections.get('todo').find(todo[0].id);
@@ -121,8 +108,6 @@ const HomeScreen = ({ navigation, todos }) => {
             console.log('Upload error!', err);
           });
 
-
-        });
       }
     }
 
@@ -135,20 +120,14 @@ const HomeScreen = ({ navigation, todos }) => {
         keyExtractor={item => item.id}
         renderItem={({item: todo}) => {
           return (
-            <ListItem bottomDivider>
-              <ListItem.Content>
-                <ListItem.Title>{todo.title}</ListItem.Title>
-                <ListItem.Subtitle>{todo.description}</ListItem.Subtitle>
-              </ListItem.Content>
-              <ListItem.Chevron />
-            </ListItem>
+            <TodoItem todo={todo} />
           );
         }}
         ListHeaderComponent={
           <View style={{ paddingHorizontal: 15, paddingVertical: 10 }}>
             <Text h3>Lista de tareas {todos.length}</Text>
             <TouchableOpacity onPress={syncData}>
-              <Text>Press</Text>
+              <Text>Sync Manual</Text>
             </TouchableOpacity>
           </View>
         }
