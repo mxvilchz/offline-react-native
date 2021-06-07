@@ -35,6 +35,15 @@ const HomeScreen = ({ navigation, todos }) => {
       const onEvent = async (taskId) => {
         console.log('[BackgroundFetch] task: ', taskId);
         // Do your background work...
+        const logCollection = database.collections.get('log');
+
+        await database.action(async () => {
+          await logCollection.create(log => {
+            log.taskId = taskId;
+            log.timestamp = (new Date()).toString();
+          });
+        });
+
         await addEvent(taskId);
         // IMPORTANT:  You must signal to the OS that your task is complete.
         BackgroundFetch.finish(taskId);
@@ -126,9 +135,14 @@ const HomeScreen = ({ navigation, todos }) => {
         ListHeaderComponent={
           <View style={{ paddingHorizontal: 15, paddingVertical: 10 }}>
             <Text h3>Lista de tareas {todos.length}</Text>
-            <TouchableOpacity onPress={syncData}>
-              <Text>Sync Manual</Text>
-            </TouchableOpacity>
+            <View style={{ display: 'flex', flexDirection: 'row' }}>
+              <TouchableOpacity onPress={syncData} style={{ borderWidth: 1, paddingVertical: 6, width: 100, borderRadius: 20, alignItems: 'center' }}>
+                <Text>Sync Manual</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Logs')} style={{ borderWidth: 1, paddingVertical: 6, width: 100, borderRadius: 20, alignItems: 'center', marginLeft: 10 }}>
+                <Text>Logs</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         }
      />

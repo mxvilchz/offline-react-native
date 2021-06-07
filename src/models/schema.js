@@ -2,7 +2,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export default appSchema({
-  version: 2,
+  version: 4,
   tables: [
     tableSchema({
       name: 'todo',
@@ -12,6 +12,13 @@ export default appSchema({
         { name: 'description', type: 'string' },
         { name: 'sync', type: 'boolean' },
         { name: 'release_date_at', type: 'number' },
+      ],
+    }),
+    tableSchema({
+      name: 'log',
+      columns: [
+        { name: 'task_id', type: 'string' },
+        { name: 'timestamp', type: 'string' },
       ],
     }),
   ],
