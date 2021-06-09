@@ -6,6 +6,8 @@ import moment from 'moment';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Dialog, List, Portal, TextInput, Title } from 'react-native-paper';
+import RNFetchBlob from 'rn-fetch-blob';
+// import ReactNativeForegroundService from '@supersami/rn-foreground-service';
 
 import { database } from '../models';
 
@@ -14,6 +16,7 @@ const CreateScreen = ({ navigation, route }) => {
   const [description, setDescription] = React.useState('');
   const [isVisible, setIsVisible] = React.useState(false);
   const [response, setResponse] = React.useState(null);
+  const [disabled, setDisabled] = React.useState(false);
 
   const selectImage = () => {
     setIsVisible(false);
@@ -47,14 +50,13 @@ const CreateScreen = ({ navigation, route }) => {
       return false;
     }
 
+    setDisabled(true);
     const resource = response?.assets && response?.assets[0];
-    // console.log(resource)
-
-    // const uri = resource.uri.replace('file:///', 'file://');
+    let newTodo;
 
     const todosCollection = database.collections.get('todo');
     await database.action(async () => {
-      await todosCollection.create(todo => {
+      newTodo = await todosCollection.create(todo => {
         todo.title = title;
         todo.meta = resource;
         todo.description = description;
@@ -63,7 +65,77 @@ const CreateScreen = ({ navigation, route }) => {
       });
     });
 
-    navigation.navigate('Inicio');
+    upload(newTodo.id);
+  };
+
+  // const onStart = () => {
+  //   // Checking if the task i am going to create already exist and running, which means that the foreground is also running.
+  //   if (ReactNativeForegroundService.is_task_running('taskid')) {return;}
+  //   // Creating a task.
+  //   ReactNativeForegroundService.add_task(upload,
+  //     {
+  //       delay: 100,
+  //       onLoop: true,
+  //       taskId: 'taskid',
+  //       onError: (e) => console.log('Error logging:', e),
+  //     },
+  //   );
+  //   // starting  foreground service.
+  //   return ReactNativeForegroundService.start({
+  //     id: 144,
+  //     title: 'Foreground Service',
+  //     message: 'you are online!',
+  //   });
+  // };
+
+  // const onStop = () => {
+  //   // Make always sure to remove the task before stoping the service. and instead of re-adding the task you can always update the task.
+  //   if (ReactNativeForegroundService.is_task_running('taskid')) {
+  //     ReactNativeForegroundService.remove_task('taskid');
+  //   }
+  //   // Stoping Foreground service.
+  //   return ReactNativeForegroundService.stop();
+  // };
+
+  const upload = async (id) => {
+    const resource = response?.assets && response?.assets[0];
+    if (resource){
+      await RNFetchBlob.fetch('POST', 'http://prueba.navego360.com/index.php/sync/push', {
+          otherHeader : 'foo',
+          // this is required, otherwise it won't be process as a multipart/form-data request
+          'Content-Type' : 'multipart/form-data',
+        }, [
+          // append field data from file path
+          {
+            name : 'files.file',
+            filename : resource?.fileName,
+            // Change BASE64 encoded data to a file path with prefix `RNFetchBlob-file://`.
+            // Or simply wrap the file path with RNFetchBlob.wrap().
+            data: RNFetchBlob.wrap(resource?.uri),
+          },
+          // elements without property `filename` will be sent as plain text
+          {
+            name : 'task',
+            data : JSON.stringify({
+              title : title,
+              description : description,
+            }),
+          },
+        ]).then(async (resp) => {
+          // console.log(1, resp);
+          const todoUpdate = await database.collections.get('todo').find(id);
+          await database.action(async () => {
+            await todoUpdate.update(item => {
+              item.sync = true;
+            });
+          });
+          navigation.navigate('Inicio');
+        }).catch((err) => {
+          Alert.alert('ToDo', err);
+        }).finally(() => {
+          setDisabled(false);
+        });
+    }
   };
 
   return (
@@ -109,7 +181,7 @@ const CreateScreen = ({ navigation, route }) => {
               </View>
           ))}
           <View style={{ marginTop: 10 }}>
-            <Button onPress={handleSave} mode="contained">
+            <Button onPress={handleSave} mode="contained" disabled={disabled}>
               Guardar
             </Button>
           </View>

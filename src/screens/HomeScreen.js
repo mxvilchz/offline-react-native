@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable prettier/prettier */
 import React from 'react';
@@ -31,8 +32,8 @@ const HomeScreen = ({ navigation, todos }) => {
       const onEvent = async (taskId) => {
         console.log('[BackgroundFetch] task: ', taskId);
         // Do your background work...
-        const logCollection = database.collections.get('log');
 
+        const logCollection = await database.collections.get('log');
         await database.action(async () => {
           await logCollection.create(log => {
             log.taskId = taskId;
@@ -41,6 +42,7 @@ const HomeScreen = ({ navigation, todos }) => {
         });
 
         await addEvent(taskId);
+
         // IMPORTANT:  You must signal to the OS that your task is complete.
         BackgroundFetch.finish(taskId);
       };
@@ -69,7 +71,7 @@ const HomeScreen = ({ navigation, todos }) => {
   const addEvent = (taskId) => {
     // Simulate a possibly long-running asynchronous task with a Promise.
     return new Promise((resolve, reject) => {
-      // syncData();
+      syncData();
       resolve();
     });
   };
@@ -103,8 +105,14 @@ const HomeScreen = ({ navigation, todos }) => {
             description : todo[0].description,
           }),
         },
-      ]).then((resp) => {
-        console.log(1, resp);
+      ]).then(async (resp) => {
+        // console.log(1, resp);
+        const todoUpdate = await database.collections.get('todo').find(todo[0].id);
+        await database.action(async () => {
+          await todoUpdate.update(item => {
+            item.sync = true;
+          });
+        });
       }).catch((err) => {
         console.log(2, err);
       });

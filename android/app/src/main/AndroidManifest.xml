@@ -31,5 +31,17 @@
             <action android:name="android.intent.action.DOWNLOAD_COMPLETE"/>
         </intent-filter>
       </activity>
+
+      <meta-data
+        android:name="com.supersami.foregroundservice.notification_channel_name"
+        android:value="Sticky Title"
+      />
+      <meta-data
+        android:name="com.supersami.foregroundservice.notification_channel_description"
+        android:value="Sticky Description."
+      />
+      <service android:name="com.supersami.foregroundservice.ForegroundService"></service>
+      <service android:name="com.supersami.foregroundservice.ForegroundServiceTask"></service>
+
     </application>
 </manifest>
