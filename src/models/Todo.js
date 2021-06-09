@@ -8,7 +8,7 @@ export default class Todo extends Model {
   static table = 'todo';
 
   @field('title') title;
-  @json('poster_image', sanitizeReactions) posterImage;
+  @json('meta', sanitizeReactions) meta;
   @field('description') description;
   @field('sync') sync;
   @date('release_date_at') releaseDateAt;

@@ -1,31 +1,27 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable prettier/prettier */
 import React from 'react';
-import { FlatList, Platform, TouchableOpacity, View } from 'react-native';
-import { Icon, Text, Button } from 'react-native-elements';
+import { FlatList, TouchableOpacity, View } from 'react-native';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../models';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackgroundFetch from 'react-native-background-fetch';
 import { Q } from '@nozbe/watermelondb';
-import Upload from 'react-native-background-upload';
+// import Upload from 'react-native-background-upload';
 import TodoItem from '../components/TodoItem';
+import { IconButton, Title, Text } from 'react-native-paper';
+import RNFetchBlob from 'rn-fetch-blob';
 
 const HomeScreen = ({ navigation, todos }) => {
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <Button
+        <IconButton
           onPress={() => navigation.navigate('Nuevo')}
-          icon={<Icon name="plus" type="material-community"  />}
-          type="outline"
+          icon="plus"
         />
       ),
-      headerRightContainerStyle: {
-        paddingRight: 15,
-      },
     });
   }, [navigation]);
 
@@ -57,7 +53,12 @@ const HomeScreen = ({ navigation, todos }) => {
       };
 
       // Initialize BackgroundFetch only once when component mounts.
-      let status = await BackgroundFetch.configure({minimumFetchInterval: 15}, onEvent, onTimeout);
+      let status = await BackgroundFetch.configure({
+        minimumFetchInterval: 15,
+        startOnBoot: true,
+        stopOnTerminate: false,
+        enableHeadless: true,
+      }, onEvent, onTimeout);
 
       console.log('[BackgroundFetch] configure status: ', status);
     };
@@ -68,7 +69,7 @@ const HomeScreen = ({ navigation, todos }) => {
   const addEvent = (taskId) => {
     // Simulate a possibly long-running asynchronous task with a Promise.
     return new Promise((resolve, reject) => {
-      syncData();
+      // syncData();
       resolve();
     });
   };
@@ -80,44 +81,71 @@ const HomeScreen = ({ navigation, todos }) => {
     );
 
     if (todo.length > 0) {
-      const image = todo[0].posterImage;
-      const uri = Platform.OS === 'ios' ? image.uri : image.uri.replace('file://', '');
-      if (uri){
 
-          const options = {
-            url: 'http://96.126.110.93:8081/upload_multipart',
-            path: uri,
-            method: 'POST',
-            field: 'uploaded_media',
-            type: 'multipart',
-            notification: {
-              enabled: true,
-              autoclear: true,
-              onProgressTitle: 'Cargando...',
-              onProgressMessage: 'Cargando ' + todo[0].title,
-              onCompleteTitle: 'Carga finalizado',
-              onCompleteMessage: 'Tu imagen ha sido subido',
-              onErrorTitle: 'Error en la carga',
-              onErrorMessage: 'Ocurrió un error al cargar la imagen',
-            },
-          };
+      await RNFetchBlob.fetch('POST', 'http://prueba.navego360.com/index.php/sync/push', {
+        otherHeader : 'foo',
+        // this is required, otherwise it won't be process as a multipart/form-data request
+        'Content-Type' : 'multipart/form-data',
+      }, [
+        // append field data from file path
+        {
+          name : 'files.file',
+          filename : todo[0].meta?.fileName,
+          // Change BASE64 encoded data to a file path with prefix `RNFetchBlob-file://`.
+          // Or simply wrap the file path with RNFetchBlob.wrap().
+          data: RNFetchBlob.wrap(todo[0].meta?.uri),
+        },
+        // elements without property `filename` will be sent as plain text
+        {
+          name : 'task',
+          data : JSON.stringify({
+            title : todo[0].title,
+            description : todo[0].description,
+          }),
+        },
+      ]).then((resp) => {
+        console.log(1, resp);
+      }).catch((err) => {
+        console.log(2, err);
+      });
 
-          Upload.startUpload(options).then((uploadId) => {
-            Upload.addListener('completed', uploadId, async (data) => {
-              // data includes responseCode: number and responseBody: Object
-              const todoUpdate = await database.collections.get('todo').find(todo[0].id);
-              await database.action(async () => {
-                await todoUpdate.update(item => {
-                  item.sync = true;
-                });
-              });
-              console.log('Completed!');
-            });
-          }).catch((err) => {
-            console.log('Upload error!', err);
-          });
+      // const uri = Platform.OS === 'ios' ? image.uri : image.uri.replace('file://', '');
+      // if (uri){
 
-      }
+      //     const options = {
+      //       url: 'http://96.126.110.93:8081/upload_multipart',
+      //       path: uri,
+      //       method: 'POST',
+      //       field: 'uploaded_media',
+      //       type: 'multipart',
+      //       notification: {
+      //         enabled: true,
+      //         autoclear: true,
+      //         onProgressTitle: 'Cargando...',
+      //         onProgressMessage: 'Cargando ' + todo[0].title,
+      //         onCompleteTitle: 'Carga finalizado',
+      //         onCompleteMessage: 'Tu imagen ha sido subido',
+      //         onErrorTitle: 'Error en la carga',
+      //         onErrorMessage: 'Ocurrió un error al cargar la imagen',
+      //       },
+      //     };
+
+      //     Upload.startUpload(options).then((uploadId) => {
+      //       Upload.addListener('completed', uploadId, async (data) => {
+      //         // data includes responseCode: number and responseBody: Object
+      //         const todoUpdate = await database.collections.get('todo').find(todo[0].id);
+      //         await database.action(async () => {
+      //           await todoUpdate.update(item => {
+      //             item.sync = true;
+      //           });
+      //         });
+      //         console.log('Completed!');
+      //       });
+      //     }).catch((err) => {
+      //       console.log('Upload error!', err);
+      //     });
+
+      // }
     }
 
   };
@@ -134,7 +162,7 @@ const HomeScreen = ({ navigation, todos }) => {
         }}
         ListHeaderComponent={
           <View style={{ paddingHorizontal: 15, paddingVertical: 10 }}>
-            <Text h3>Lista de tareas {todos.length}</Text>
+            <Title>Lista de tareas ({todos.length})</Title>
             <View style={{ display: 'flex', flexDirection: 'row' }}>
               <TouchableOpacity onPress={syncData} style={{ borderWidth: 1, paddingVertical: 6, width: 100, borderRadius: 20, alignItems: 'center' }}>
                 <Text>Sync Manual</Text>

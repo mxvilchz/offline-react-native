@@ -1,11 +1,11 @@
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable prettier/prettier */
 import React from 'react';
-import { View, ScrollView, Alert } from 'react-native';
-import { Text, Input, Button, BottomSheet, ListItem, Image } from 'react-native-elements';
+import { View, ScrollView, Alert, Image } from 'react-native';
 import moment from 'moment';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button, Dialog, List, Portal, TextInput, Title } from 'react-native-paper';
 
 import { database } from '../models';
 
@@ -16,40 +16,22 @@ const CreateScreen = ({ navigation, route }) => {
   const [response, setResponse] = React.useState(null);
 
   const selectImage = () => {
+    setIsVisible(false);
     launchImageLibrary({
-      maxHeight: 500,
-      maxWidth: 500,
       selectionLimit: 0,
       mediaType: 'photo',
       includeBase64: false,
     }, setResponse);
-    setIsVisible(false);
   };
 
   const takeImage = () => {
+    setIsVisible(false);
     launchCamera({
       saveToPhotos: true,
       mediaType: 'photo',
-      includeBase64: true,
+      includeBase64: false,
     }, setResponse);
-    setIsVisible(false);
   };
-
-  const list = [
-    {
-      title: 'Tomar imagen',
-      onPress: () => takeImage(),
-    },
-    {
-      title: 'Seleccionar imagen',
-      onPress: () => selectImage(),
-    },
-    {
-      title: 'Cancelar',
-      titleStyle: { color: 'red' },
-      onPress: () => setIsVisible(false),
-    },
-  ];
 
   const handleSave = async () => {
     if (title === '') {
@@ -66,13 +48,15 @@ const CreateScreen = ({ navigation, route }) => {
     }
 
     const resource = response?.assets && response?.assets[0];
+    // console.log(resource)
 
-    // const uri = Platform.OS === 'ios' ? resource.uri : resource.uri.replace('file://', '');
+    // const uri = resource.uri.replace('file:///', 'file://');
+
     const todosCollection = database.collections.get('todo');
     await database.action(async () => {
       await todosCollection.create(todo => {
         todo.title = title;
-        todo.posterImage = resource;
+        todo.meta = resource;
         todo.description = description;
         todo.sync = false;
         todo.releaseDateAt = moment().unix();
@@ -86,26 +70,32 @@ const CreateScreen = ({ navigation, route }) => {
     <SafeAreaView style={{ flex: 1 }}>
       <ScrollView>
         <View style={{ padding: 15 }}>
-          <Text h3>Nuevo</Text>
+          <Title>Nueva tarea</Title>
           <View style={{ marginTop: 10 }}>
-            <Input
+            <TextInput
               label="Titulo"
               placeholder="Ingrese un titulo"
               value={title}
               onChangeText={text => setTitle(text)}
+              dense
+              mode="outlined"
             />
           </View>
           <View style={{ marginTop: 10 }}>
-            <Input
+            <TextInput
               label="Descripción"
               placeholder="Ingrese una descripción"
               multiline
               value={description}
               onChangeText={text => setDescription(text)}
+              dense
+              mode="outlined"
             />
           </View>
           <View style={{ marginTop: 10 }}>
-            <Button title="Agregar foto" type="outline" onPress={() => setIsVisible(true)} />
+            <Button onPress={() => setIsVisible(true)}>
+              Agregar foto
+            </Button>
           </View>
           {response?.assets &&
             response?.assets.map(({uri}) => (
@@ -119,21 +109,29 @@ const CreateScreen = ({ navigation, route }) => {
               </View>
           ))}
           <View style={{ marginTop: 10 }}>
-            <Button title="Guardar" onPress={handleSave} raised />
+            <Button onPress={handleSave} mode="contained">
+              Guardar
+            </Button>
           </View>
         </View>
-        <BottomSheet
-          isVisible={isVisible}
-          containerStyle={{ backgroundColor: 'rgba(0.5, 0.25, 0, 0.2)' }}
-        >
-          {list.map((l, i) => (
-            <ListItem key={i} containerStyle={l.containerStyle} onPress={l.onPress}>
-              <ListItem.Content>
-                <ListItem.Title style={l.titleStyle}>{l.title}</ListItem.Title>
-              </ListItem.Content>
-            </ListItem>
-          ))}
-        </BottomSheet>
+        <Portal>
+          <Dialog visible={isVisible} onDismiss={() => setIsVisible(false)}>
+            <Dialog.Title>Seleccione imagen</Dialog.Title>
+            <Dialog.Content>
+              <List.Item
+                title="Tomar imagen"
+                onPress={takeImage}
+              />
+              <List.Item
+                title="Seleccionar imagen"
+                onPress={selectImage}
+              />
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setIsVisible(false)}>Cancelar</Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
       </ScrollView>
     </SafeAreaView>
   );

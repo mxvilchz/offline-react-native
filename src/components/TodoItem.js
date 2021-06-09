@@ -1,21 +1,17 @@
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable prettier/prettier */
 import React from 'react';
-import { ListItem } from 'react-native-elements';
 import withObservables from '@nozbe/with-observables';
 import { StyleSheet, View } from 'react-native';
+import { List } from 'react-native-paper';
 
 const TodoItem = ({ todo }) => {
   return (
-    <ListItem bottomDivider>
-      <ListItem.Content>
-        <ListItem.Title>{<View style={[styles.icon, { backgroundColor: todo.sync ? 'green' : 'red', borderColor: todo.sync ? 'green' : 'red' }]} />} {todo.title}</ListItem.Title>
-        <ListItem.Subtitle style={{ alignItems: 'center' }}>
-          {todo.description}
-        </ListItem.Subtitle>
-      </ListItem.Content>
-      <ListItem.Chevron />
-    </ListItem>
+    <List.Item
+      title={todo.title}
+      description={todo.description}
+      left={() => <View style={[styles.icon, { backgroundColor: todo.sync ? 'green' : 'red', borderColor: todo.sync ? 'green' : 'red' }]} />}
+    />
   );
 };
 
