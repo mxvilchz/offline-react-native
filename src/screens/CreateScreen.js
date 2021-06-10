@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Button, Dialog, List, Portal, TextInput, Title } from 'react-native-paper'
 import RNFetchBlob from 'rn-fetch-blob'
 import NetInfo from '@react-native-community/netinfo'
+import RnBgTask from 'react-native-bg-thread'
 
 import { database } from '../models'
 
@@ -72,11 +73,11 @@ const CreateScreen = ({ navigation, route }) => {
         todo.releaseDateAt = moment().unix()
       })
     })
+
     if (isConnected) {
-      upload(newTodo.id)
-    } else {
-      navigation.navigate('Inicio')
+      RnBgTask.runInBackground_withPriority('NORMAL', () => upload(newTodo.id))
     }
+    navigation.navigate('Inicio')
   }
 
   // const onStart = () => {
@@ -140,11 +141,9 @@ const CreateScreen = ({ navigation, route }) => {
             item.sync = true
           })
         })
-        navigation.navigate('Inicio')
+        // navigation.navigate('Inicio')
       }).catch((err) => {
         Alert.alert('ToDo', err)
-      }).finally(() => {
-        setDisabled(false)
       })
     }
   }

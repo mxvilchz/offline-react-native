@@ -53,9 +53,18 @@ const HomeScreen = ({ navigation, todos }) => {
     ReactNativeForegroundService.add_task(
       syncData,
       {
-        delay: 60000,
+        delay: 300000,
         onLoop: true,
         taskId: 'taskid',
+        onSuccess: async () => {
+          const logCollection = await database.collections.get('log')
+          await database.action(async () => {
+            await logCollection.create(log => {
+              log.taskId = 'foreground-services-task'
+              log.timestamp = (new Date()).toString()
+            })
+          })
+        },
         onError: (e) => console.log('Error logging:', e)
       }
     )
@@ -118,15 +127,6 @@ const HomeScreen = ({ navigation, todos }) => {
 
   const syncData = async () => {
     console.log('I am Being Tested')
-
-    const logCollection = await database.collections.get('log')
-    await database.action(async () => {
-      await logCollection.create(log => {
-        log.taskId = 'foreground-services-task'
-        log.timestamp = (new Date()).toString()
-      })
-    })
-
     if (isConnected) {
       const todo = await database.collections.get('todo').query(
         Q.where('sync', false),

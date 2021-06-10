@@ -24,7 +24,7 @@
     "react-native": "0.64.2",
     "react-native-background-fetch": "^4.0.2",
     "react-native-background-upload": "^6.2.4",
-    "react-native-background-worker": "^0.0.5",
+    "react-native-bg-thread": "^1.2.0",
     "react-native-elements": "^3.4.1",
     "react-native-flash-message": "^0.1.23",
     "react-native-flipper": "^0.92.0",
