@@ -1,72 +1,83 @@
-/* eslint-disable react-native/no-inline-styles */
-/* eslint-disable prettier/prettier */
-import React from 'react';
-import { View, ScrollView, Alert, Image } from 'react-native';
-import moment from 'moment';
-import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, Dialog, List, Portal, TextInput, Title } from 'react-native-paper';
-import RNFetchBlob from 'rn-fetch-blob';
-// import ReactNativeForegroundService from '@supersami/rn-foreground-service';
+/* eslint-disable react/prop-types */
+import React from 'react'
+import { View, ScrollView, Alert, Image } from 'react-native'
+import moment from 'moment'
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker'
+import { SafeAreaView } from 'react-native-safe-area-context'
+import { Button, Dialog, List, Portal, TextInput, Title } from 'react-native-paper'
+import RNFetchBlob from 'rn-fetch-blob'
+import NetInfo from '@react-native-community/netinfo'
 
-import { database } from '../models';
+import { database } from '../models'
 
 const CreateScreen = ({ navigation, route }) => {
-  const [title, setTitle] = React.useState('');
-  const [description, setDescription] = React.useState('');
-  const [isVisible, setIsVisible] = React.useState(false);
-  const [response, setResponse] = React.useState(null);
-  const [disabled, setDisabled] = React.useState(false);
+  const [title, setTitle] = React.useState('')
+  const [description, setDescription] = React.useState('')
+  const [isVisible, setIsVisible] = React.useState(false)
+  const [response, setResponse] = React.useState(null)
+  const [disabled, setDisabled] = React.useState(false)
+
+  const [isConnected, setIsConnected] = React.useState(true)
+
+  React.useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected)
+    })
+    return () => unsubscribe()
+  }, [])
 
   const selectImage = () => {
-    setIsVisible(false);
+    setIsVisible(false)
     launchImageLibrary({
       selectionLimit: 0,
       mediaType: 'photo',
-      includeBase64: false,
-    }, setResponse);
-  };
+      includeBase64: false
+    }, setResponse)
+  }
 
   const takeImage = () => {
-    setIsVisible(false);
+    setIsVisible(false)
     launchCamera({
       saveToPhotos: true,
       mediaType: 'photo',
-      includeBase64: false,
-    }, setResponse);
-  };
+      includeBase64: false
+    }, setResponse)
+  }
 
   const handleSave = async () => {
     if (title === '') {
-      Alert.alert('ToDo', 'Ingrese un titulo');
-      return false;
+      Alert.alert('ToDo', 'Ingrese un titulo')
+      return false
     }
     if (description === '') {
-      Alert.alert('ToDo', 'Ingrese una descripción');
-      return false;
+      Alert.alert('ToDo', 'Ingrese una descripción')
+      return false
     }
     if (response === null) {
-      Alert.alert('ToDo', 'Seleccione una imagen');
-      return false;
+      Alert.alert('ToDo', 'Seleccione una imagen')
+      return false
     }
 
-    setDisabled(true);
-    const resource = response?.assets && response?.assets[0];
-    let newTodo;
+    setDisabled(true)
+    const resource = response?.assets && response?.assets[0]
+    let newTodo
 
-    const todosCollection = database.collections.get('todo');
+    const todosCollection = database.collections.get('todo')
     await database.action(async () => {
       newTodo = await todosCollection.create(todo => {
-        todo.title = title;
-        todo.meta = resource;
-        todo.description = description;
-        todo.sync = false;
-        todo.releaseDateAt = moment().unix();
-      });
-    });
-
-    upload(newTodo.id);
-  };
+        todo.title = title
+        todo.meta = resource
+        todo.description = description
+        todo.sync = false
+        todo.releaseDateAt = moment().unix()
+      })
+    })
+    if (isConnected) {
+      upload(newTodo.id)
+    } else {
+      navigation.navigate('Inicio')
+    }
+  }
 
   // const onStart = () => {
   //   // Checking if the task i am going to create already exist and running, which means that the foreground is also running.
@@ -98,45 +109,45 @@ const CreateScreen = ({ navigation, route }) => {
   // };
 
   const upload = async (id) => {
-    const resource = response?.assets && response?.assets[0];
-    if (resource){
+    const resource = response?.assets && response?.assets[0]
+    if (resource) {
       await RNFetchBlob.fetch('POST', 'http://prueba.navego360.com/index.php/sync/push', {
-          otherHeader : 'foo',
-          // this is required, otherwise it won't be process as a multipart/form-data request
-          'Content-Type' : 'multipart/form-data',
-        }, [
-          // append field data from file path
-          {
-            name : 'files.file',
-            filename : resource?.fileName,
-            // Change BASE64 encoded data to a file path with prefix `RNFetchBlob-file://`.
-            // Or simply wrap the file path with RNFetchBlob.wrap().
-            data: RNFetchBlob.wrap(resource?.uri),
-          },
-          // elements without property `filename` will be sent as plain text
-          {
-            name : 'task',
-            data : JSON.stringify({
-              title : title,
-              description : description,
-            }),
-          },
-        ]).then(async (resp) => {
-          // console.log(1, resp);
-          const todoUpdate = await database.collections.get('todo').find(id);
-          await database.action(async () => {
-            await todoUpdate.update(item => {
-              item.sync = true;
-            });
-          });
-          navigation.navigate('Inicio');
-        }).catch((err) => {
-          Alert.alert('ToDo', err);
-        }).finally(() => {
-          setDisabled(false);
-        });
+        otherHeader: 'foo',
+        // this is required, otherwise it won't be process as a multipart/form-data request
+        'Content-Type': 'multipart/form-data'
+      }, [
+        // append field data from file path
+        {
+          name: 'files.file',
+          filename: resource?.fileName,
+          // Change BASE64 encoded data to a file path with prefix `RNFetchBlob-file://`.
+          // Or simply wrap the file path with RNFetchBlob.wrap().
+          data: RNFetchBlob.wrap(resource?.uri)
+        },
+        // elements without property `filename` will be sent as plain text
+        {
+          name: 'task',
+          data: JSON.stringify({
+            title: title,
+            description: description
+          })
+        }
+      ]).then(async (resp) => {
+        // console.log(1, resp);
+        const todoUpdate = await database.collections.get('todo').find(id)
+        await database.action(async () => {
+          await todoUpdate.update(item => {
+            item.sync = true
+          })
+        })
+        navigation.navigate('Inicio')
+      }).catch((err) => {
+        Alert.alert('ToDo', err)
+      }).finally(() => {
+        setDisabled(false)
+      })
     }
-  };
+  }
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -151,6 +162,7 @@ const CreateScreen = ({ navigation, route }) => {
               onChangeText={text => setTitle(text)}
               dense
               mode="outlined"
+              autoCapitalize="none"
             />
           </View>
           <View style={{ marginTop: 10 }}>
@@ -162,6 +174,7 @@ const CreateScreen = ({ navigation, route }) => {
               onChangeText={text => setDescription(text)}
               dense
               mode="outlined"
+              autoCapitalize="none"
             />
           </View>
           <View style={{ marginTop: 10 }}>
@@ -170,16 +183,16 @@ const CreateScreen = ({ navigation, route }) => {
             </Button>
           </View>
           {response?.assets &&
-            response?.assets.map(({uri}) => (
+            response?.assets.map(({ uri }) => (
               <View key={uri} style={{ alignItems: 'center', marginVertical: 10 }}>
                 <Image
                   resizeMode="cover"
                   resizeMethod="scale"
-                  style={{width: 200, height: 200}}
-                  source={{uri: uri}}
+                  style={{ width: 200, height: 200 }}
+                  source={{ uri: uri }}
                 />
               </View>
-          ))}
+            ))}
           <View style={{ marginTop: 10 }}>
             <Button onPress={handleSave} mode="contained" disabled={disabled}>
               Guardar
@@ -206,7 +219,7 @@ const CreateScreen = ({ navigation, route }) => {
         </Portal>
       </ScrollView>
     </SafeAreaView>
-  );
-};
+  )
+}
 
-export default CreateScreen;
+export default CreateScreen

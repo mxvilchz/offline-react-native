@@ -254,9 +254,13 @@ PODS:
   - React-jsinspector (0.64.2)
   - react-native-background-upload (6.2.4):
     - React
+  - react-native-background-worker (0.0.5):
+    - React
   - react-native-flipper (0.92.0):
     - React-Core
   - react-native-image-picker (4.0.3):
+    - React-Core
+  - react-native-netinfo (6.0.0):
     - React-Core
   - react-native-safe-area-context (3.2.0):
     - React-Core
@@ -415,8 +419,10 @@ DEPENDENCIES:
   - React-jsiexecutor (from `../node_modules/react-native/ReactCommon/jsiexecutor`)
   - React-jsinspector (from `../node_modules/react-native/ReactCommon/jsinspector`)
   - react-native-background-upload (from `../node_modules/react-native-background-upload`)
+  - react-native-background-worker (from `../node_modules/react-native-background-worker`)
   - react-native-flipper (from `../node_modules/react-native-flipper`)
   - react-native-image-picker (from `../node_modules/react-native-image-picker`)
+  - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - React-perflogger (from `../node_modules/react-native/ReactCommon/reactperflogger`)
   - React-RCTActionSheet (from `../node_modules/react-native/Libraries/ActionSheetIOS`)
@@ -490,10 +496,14 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/jsinspector"
   react-native-background-upload:
     :path: "../node_modules/react-native-background-upload"
+  react-native-background-worker:
+    :path: "../node_modules/react-native-background-worker"
   react-native-flipper:
     :path: "../node_modules/react-native-flipper"
   react-native-image-picker:
     :path: "../node_modules/react-native-image-picker"
+  react-native-netinfo:
+    :path: "../node_modules/@react-native-community/netinfo"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   React-perflogger:
@@ -571,8 +581,10 @@ SPEC CHECKSUMS:
   React-jsiexecutor: 80c46bd381fd06e418e0d4f53672dc1d1945c4c3
   React-jsinspector: cc614ec18a9ca96fd275100c16d74d62ee11f0ae
   react-native-background-upload: b85fac36cfee561c8b3a282e5700e50dc98249c5
+  react-native-background-worker: 47504752b343a41523be45c91c2e8a3a78532d48
   react-native-flipper: 51d058827cc04d89cd23cc4b1aa2d724c3d820bf
   react-native-image-picker: 474cf2c33c2b6671da53d293a16c97995f0aec15
+  react-native-netinfo: e849fc21ca2f4128a5726c801a82fc6f4a6db50d
   react-native-safe-area-context: f0906bf8bc9835ac9a9d3f97e8bde2a997d8da79
   React-perflogger: 25373e382fed75ce768a443822f07098a15ab737
   React-RCTActionSheet: af7796ba49ffe4ca92e7277a5d992d37203f7da5
