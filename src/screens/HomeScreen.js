@@ -1,28 +1,41 @@
+/* eslint-disable array-callback-return */
 /* eslint-disable no-useless-return */
 /* eslint-disable react/display-name */
 /* eslint-disable react/prop-types */
 import React from 'react'
-import { Alert, FlatList, TouchableOpacity, View } from 'react-native'
+import { FlatList, TouchableOpacity, View, ToastAndroid } from 'react-native'
 import withObservables from '@nozbe/with-observables'
-import { database } from '../models'
 import { SafeAreaView } from 'react-native-safe-area-context'
 // import BackgroundFetch from 'react-native-background-fetch'
 import { Q } from '@nozbe/watermelondb'
-import TodoItem from '../components/TodoItem'
-import { IconButton, Title, Text } from 'react-native-paper'
+import { IconButton, Title, Text, Portal, Dialog, Paragraph, Button } from 'react-native-paper'
 import RNFetchBlob from 'rn-fetch-blob'
-import ReactNativeForegroundService from '@supersami/rn-foreground-service'
 import NetInfo from '@react-native-community/netinfo'
+import RnBgTask from 'react-native-bg-thread'
+import BackgroundFetch from 'react-native-background-fetch'
+import ReactNativeForegroundService from '@supersami/rn-foreground-service'
+import { useIsFocused } from '@react-navigation/native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+
+import TodoItem from '../components/TodoItem'
+
+import { database } from '../models'
+import { pull, push } from '../utils/sync'
 
 const HomeScreen = ({ navigation, todos }) => {
   const [isConnected, setIsConnected] = React.useState(true)
+  const [showDialogDelete, setShowDialogDelete] = React.useState(false)
+  const [deleteId, setDeleteId] = React.useState(null)
+  const [serviceType, setServiceType] = React.useState([])
+
+  const isFocused = useIsFocused()
 
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <>
           <IconButton
-            onPress={() => navigation.navigate('Nuevo')}
+            onPress={() => navigation.navigate('Nuevo', { id: null })}
             icon="plus"
           />
         </>
@@ -31,175 +44,188 @@ const HomeScreen = ({ navigation, todos }) => {
   }, [navigation])
 
   React.useEffect(() => {
+    verifyServiceForegroundFetch()
     const unsubscribe = NetInfo.addEventListener(state => {
       setIsConnected(state.isConnected)
     })
     return () => unsubscribe()
   }, [])
 
-  const onStop = () => {
-    // Make always sure to remove the task before stoping the service. and instead of re-adding the task you can always update the task.
-    if (ReactNativeForegroundService.is_task_running('taskid')) {
-      ReactNativeForegroundService.remove_task('taskid')
+  React.useEffect(() => {
+    if (isFocused) {
+      verifyServiceForegroundFetch()
     }
-    // Stoping Foreground service.
-    return ReactNativeForegroundService.stop()
+  }, [isFocused])
+
+  const verifyServiceForegroundFetch = () => {
+    if (ReactNativeForegroundService.is_task_running('taskid')) {
+      setServiceType(['ForegroundFetch'])
+    } else {
+      setServiceType([])
+    }
   }
 
-  const onStart = () => {
-    // Checking if the task i am going to create already exist and running, which means that the foreground is also running.
-    if (ReactNativeForegroundService.is_task_running('taskid')) return
-    // Creating a task.
-    ReactNativeForegroundService.add_task(
-      syncData,
-      {
-        delay: 300000,
-        onLoop: true,
-        taskId: 'taskid',
-        onSuccess: async () => {
-          const logCollection = await database.collections.get('log')
-          await database.action(async () => {
-            await logCollection.create(log => {
-              log.taskId = 'foreground-services-task'
-              log.timestamp = (new Date()).toString()
-            })
-          })
-        },
-        onError: (e) => console.log('Error logging:', e)
-      }
-    )
-    // starting  foreground service.
-    return ReactNativeForegroundService.start({
-      id: 144,
-      title: 'Servicio de primer plano',
-      message: 'Estás en línea!'
+  const onBackgroundFetchEvent = async (taskId) => {
+    if (isConnected) {
+      await pull()
+      await push()
+    }
+
+    const jsonValue = JSON.stringify({ status: true })
+    await AsyncStorage.setItem('@backgroundFetch', jsonValue)
+
+    const logCollection = await database.collections.get('logs')
+    await database.action(async () => {
+      await logCollection.create(item => {
+        item.taskId = '[BackgroundFetch] Event taskId ' + taskId
+        item.timestamp = (new Date()).toString()
+      })
+    })
+
+    BackgroundFetch.finish(taskId)
+  }
+
+  const onBackgroundFetchTimeout = async (taskId) => {
+    const logCollection = await database.collections.get('logs')
+    await database.action(async () => {
+      await logCollection.create(log => {
+        log.taskId = '[BackgroundFetch] TIMEOUT taskId ' + taskId
+        log.timestamp = (new Date()).toString()
+      })
+    })
+    BackgroundFetch.finish(taskId)
+  }
+
+  const initiBackgroundFetch = async () => {
+    const status = await BackgroundFetch.configure({
+      minimumFetchInterval: 15, // <-- minutes (15 is minimum allowed)
+      // Android options
+      forceAlarmManager: false, // <-- Set true to bypass JobScheduler.
+      stopOnTerminate: false,
+      enableHeadless: true,
+      startOnBoot: true,
+      requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE, // Default
+      requiresCharging: false, // Default
+      requiresDeviceIdle: false, // Default
+      requiresBatteryNotLow: false, // Default
+      requiresStorageNotLow: false // Default
+    }, onBackgroundFetchEvent, onBackgroundFetchTimeout)
+
+    const logCollection = await database.collections.get('logs')
+    await database.action(async () => {
+      await logCollection.create(log => {
+        log.taskId = '[BackgroundFetch] configure status ' + status
+        log.timestamp = (new Date()).toString()
+      })
     })
   }
 
-  // React.useEffect(() => {
-  //   const initBackgroundFetch = async () => {
-  //     // BackgroundFetch event handler.
-  //     const onEvent = async (taskId) => {
-  //       console.log('[BackgroundFetch] task: ', taskId)
-  //       // Do your background work...
+  React.useEffect(() => {
+    initiBackgroundFetch()
+  }, [])
 
-  //       const logCollection = await database.collections.get('log')
-  //       await database.action(async () => {
-  //         await logCollection.create(log => {
-  //           log.taskId = taskId
-  //           log.timestamp = (new Date()).toString()
-  //         })
-  //       })
+  const handleEdit = (id) => {
+    navigation.navigate('Nuevo', { id })
+  }
 
-  //       await addEvent(taskId)
+  const handleDelte = (id) => {
+    setShowDialogDelete(true)
+    setDeleteId(id)
+  }
 
-  //       // IMPORTANT:  You must signal to the OS that your task is complete.
-  //       BackgroundFetch.finish(taskId)
-  //     }
+  const handleConfirmDelete = async () => {
+    const someTodo = await database.collections.get('todos').find(deleteId)
+    await database.action(async (action) => {
+      await someTodo.update(item => {
+        item.status = 0
+        item.sync = false
+      })
+    })
 
-  //     // Timeout callback is executed when your Task has exceeded its allowed running-time.
-  //     // You must stop what you're doing immediately BackgorundFetch.finish(taskId)
-  //     const onTimeout = async (taskId) => {
-  //       console.warn('[BackgroundFetch] TIMEOUT task: ', taskId)
-  //       BackgroundFetch.finish(taskId)
-  //     }
-
-  //     // Initialize BackgroundFetch only once when component mounts.
-  //     const status = await BackgroundFetch.configure({
-  //       minimumFetchInterval: 15,
-  //       startOnBoot: true,
-  //       stopOnTerminate: false,
-  //       enableHeadless: true
-  //     }, onEvent, onTimeout)
-
-  //     console.log('[BackgroundFetch] configure status: ', status)
-  //   }
-  //   initBackgroundFetch()
-  // }, [])
-
-  // const addEvent = (taskId) => {
-  //   // Simulate a possibly long-running asynchronous task with a Promise.
-  //   return new Promise((resolve, reject) => {
-  //     syncData()
-  //     resolve()
-  //   })
-  // }
-
-  const syncData = async () => {
-    console.log('I am Being Tested')
     if (isConnected) {
-      const todo = await database.collections.get('todo').query(
-        Q.where('sync', false),
-        Q.experimentalTake(1)
-      )
-
-      if (todo.length > 0) {
-        await RNFetchBlob.fetch('POST', 'http://prueba.navego360.com/index.php/sync/push', {
-          otherHeader: 'foo',
+      RnBgTask.runInBackground_withPriority('NORMAL', async () => {
+        const uuids = [someTodo.uuid]
+        await RNFetchBlob.fetch('POST', 'http://prueba.navego360.com/index.php/sync/delete', {
           'Content-Type': 'multipart/form-data'
         }, [
           {
-            name: 'files.file',
-            filename: todo[0].meta?.fileName,
-            data: RNFetchBlob.wrap(todo[0].meta?.uri)
-          },
-          {
-            name: 'task',
+            name: 'delete',
             data: JSON.stringify({
-              title: todo[0].title,
-              description: todo[0].description
+              delete: uuids
             })
           }
-        ]).then(async () => {
-          const todoUpdate = await database.collections.get('todo').find(todo[0].id)
-          await database.action(async () => {
-            await todoUpdate.update(item => {
-              item.sync = true
-            })
-          })
-        }).catch((err) => {
-          Alert.alert('Error', err)
+        ]).then(async response => {
+          const status = response.info().status
+          if (status === 200) {
+            const data = await response.json()
+
+            for (let i = 0; i < data.delete.length; i++) {
+              const uuid = data.delete[i]
+              const findTodo = await database.collections.get('todos').query(Q.where('uuid', uuid)).fetch()
+              if (findTodo.length > 0) {
+                const todo = await database.collections.get('todos').find(findTodo[0].id)
+                await database.action(async () => {
+                  await todo.markAsDeleted()
+                  await todo.destroyPermanently()
+                })
+              } else {
+                console.log('not found for delete')
+              }
+            }
+
+            ToastAndroid.showWithGravity(data.message, ToastAndroid.SHORT, ToastAndroid.BOTTOM)
+          }
+        }).catch((error) => {
+          console.log(error)
         })
-      }
+      })
     }
+
+    setShowDialogDelete(false)
+  }
+
+  const goToSettings = () => {
+    navigation.navigate('Settings')
   }
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-     <FlatList
+      <FlatList
         data={todos}
         keyExtractor={item => item.id}
         renderItem={({ item: todo }) => {
           return (
-            <TodoItem todo={todo} />
+            <TodoItem todo={todo} handleEdit={() => handleEdit(todo.id)} handleDelte={() => handleDelte(todo.id)} />
           )
         }}
         ListHeaderComponent={
           <View style={{ paddingHorizontal: 15, paddingVertical: 10 }}>
+            <Text>running service: {serviceType.join(', ')}</Text>
             <Title>Lista de tareas ({todos.length})</Title>
-            <View style={{ display: 'flex', flexDirection: 'row', width: '100%', flexWrap: 'wrap' }}>
-              <TouchableOpacity onPress={syncData} style={{ borderWidth: 1, paddingVertical: 6, width: 100, borderRadius: 20, alignItems: 'center', marginRight: 5 }}>
-                <Text>Sync Manual</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('Logs')} style={{ borderWidth: 1, paddingVertical: 6, width: 100, borderRadius: 20, alignItems: 'center', marginRight: 5 }}>
-                <Text>Logs</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={onStart} style={{ borderWidth: 1, paddingVertical: 6, width: 100, borderRadius: 20, alignItems: 'center', marginRight: 5 }}>
-                <Text>Start service</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={onStop} style={{ borderWidth: 1, paddingVertical: 6, width: 100, borderRadius: 20, alignItems: 'center', marginRight: 5, marginTop: 5 }}>
-                <Text>Stop service</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity onPress={goToSettings} style={{ borderWidth: 1, paddingVertical: 6, width: 120, borderRadius: 20, alignItems: 'center' }}>
+              <Text>Configuraciones</Text>
+            </TouchableOpacity>
           </View>
         }
-     />
+      />
+      <Portal>
+        <Dialog visible={showDialogDelete} onDismiss={() => setShowDialogDelete(false)}>
+          <Dialog.Title>ToDo</Dialog.Title>
+          <Dialog.Content>
+            <Paragraph>¿Seguro que quiere eliminar el registro?</Paragraph>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowDialogDelete(false)}>Cancelar</Button>
+            <Button onPress={handleConfirmDelete}>Si</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </SafeAreaView>
   )
 }
 
 const enhance = withObservables([], () => ({
-  todos: database.collections.get('todo').query().observe()
+  todos: database.collections.get('todos').query(Q.where('status', 1)).observe()
 }))
 
 export default enhance(HomeScreen)

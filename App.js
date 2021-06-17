@@ -12,6 +12,7 @@ import FlashMessage, { showMessage, hideMessage } from 'react-native-flash-messa
 import HomeScreen from './src/screens/HomeScreen'
 import CreateScreen from './src/screens/CreateScreen'
 import LogsScreen from './src/screens/LogsScreen'
+import SettingsScreen from './src/screens/SettingsScreen'
 
 const Stack = createStackNavigator()
 
@@ -19,26 +20,36 @@ const App = () => {
   const [isConnected, setIsConnected] = React.useState(true)
 
   React.useEffect(() => {
+    NetInfo.fetch().then(state => {
+      console.log(state.isConnected)
+      setIsConnected(state.isConnected)
+    })
+  }, [])
+
+  React.useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
       setIsConnected(state.isConnected)
     })
     return () => unsubscribe()
   }, [])
+
   React.useEffect(() => {
     if (!isConnected) {
-      showMessage({ message: 'Sin conexión', type: 'danger', description: 'Modo offline', autoHide: false })
+      showMessage({ message: 'Modo offline', type: 'danger', autoHide: false, style: { height: 50 } })
     } else {
       hideMessage()
     }
   }, [isConnected])
+
   return (
     <PaperProvider theme={DefaultTheme}>
       <SafeAreaProvider>
         <NavigationContainer>
           <Stack.Navigator>
-            <Stack.Screen name="Inicio" component={HomeScreen} />
+            <Stack.Screen name="ToDo" component={HomeScreen} />
             <Stack.Screen name="Nuevo" component={CreateScreen} />
             <Stack.Screen name="Logs" component={LogsScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
           </Stack.Navigator>
         </NavigationContainer>
         <FlashMessage position="bottom" />

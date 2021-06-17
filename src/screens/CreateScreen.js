@@ -1,15 +1,36 @@
 /* eslint-disable react/prop-types */
 import React from 'react'
-import { View, ScrollView, Alert, Image } from 'react-native'
-import moment from 'moment'
+import { View, Image, TouchableOpacity, ToastAndroid } from 'react-native'
+// import moment from 'moment'
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Button, Dialog, List, Portal, TextInput, Title } from 'react-native-paper'
+import { Button, Dialog, List, Portal, TextInput, Title, Text, RadioButton } from 'react-native-paper'
 import RNFetchBlob from 'rn-fetch-blob'
 import NetInfo from '@react-native-community/netinfo'
 import RnBgTask from 'react-native-bg-thread'
+import Icon from 'react-native-vector-icons/dist/MaterialCommunityIcons'
+import { v4 as uuidv4 } from 'uuid'
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 
 import { database } from '../models'
+
+const states = [
+  {
+    id: 0,
+    name: 'PENDIENTE',
+    value: 1
+  },
+  {
+    id: 1,
+    name: 'INICIADO',
+    value: 2
+  },
+  {
+    id: 2,
+    name: 'TERMINADO',
+    value: 3
+  }
+]
 
 const CreateScreen = ({ navigation, route }) => {
   const [title, setTitle] = React.useState('')
@@ -17,6 +38,10 @@ const CreateScreen = ({ navigation, route }) => {
   const [isVisible, setIsVisible] = React.useState(false)
   const [response, setResponse] = React.useState(null)
   const [disabled, setDisabled] = React.useState(false)
+  const [id, setId] = React.useState(null)
+
+  const [showStates, setShowStates] = React.useState(false)
+  const [state, setState] = React.useState(1)
 
   const [isConnected, setIsConnected] = React.useState(true)
 
@@ -25,6 +50,21 @@ const CreateScreen = ({ navigation, route }) => {
       setIsConnected(state.isConnected)
     })
     return () => unsubscribe()
+  }, [])
+
+  React.useEffect(() => {
+    const getParamId = async () => {
+      const { id } = route.params
+      if (id) {
+        const todo = await database.collections.get('todos').find(id)
+        setTitle(todo.title)
+        setDescription(todo.description)
+        setState(todo.state)
+        setResponse({ assets: [todo.meta] })
+      }
+      setId(id)
+    }
+    getParamId()
   }, [])
 
   const selectImage = () => {
@@ -46,113 +86,100 @@ const CreateScreen = ({ navigation, route }) => {
   }
 
   const handleSave = async () => {
-    if (title === '') {
-      Alert.alert('ToDo', 'Ingrese un titulo')
-      return false
-    }
-    if (description === '') {
-      Alert.alert('ToDo', 'Ingrese una descripción')
-      return false
-    }
-    if (response === null) {
-      Alert.alert('ToDo', 'Seleccione una imagen')
-      return false
-    }
-
     setDisabled(true)
-    const resource = response?.assets && response?.assets[0]
-    let newTodo
+    let todo; let uuid; let resource = null
+    if (response) {
+      resource = response?.assets && response?.assets[0]
+    }
 
-    const todosCollection = database.collections.get('todo')
-    await database.action(async () => {
-      newTodo = await todosCollection.create(todo => {
-        todo.title = title
-        todo.meta = resource
-        todo.description = description
-        todo.sync = false
-        todo.releaseDateAt = moment().unix()
+    if (id) {
+      const someTodo = await database.collections.get('todos').find(id)
+      uuid = someTodo.uuid
+      await database.action(async () => {
+        await someTodo.update(item => {
+          item.title = title.trim()
+          item.description = description.trim()
+          item.state = state
+          item.meta = resource
+          item.sync = false
+          item._raw._status = 'updated'
+        })
       })
-    })
+    } else {
+      const todosCollection = database.collections.get('todos')
+      uuid = uuidv4()
+      await database.action(async () => {
+        todo = await todosCollection.create(item => {
+          item.uuid = uuid
+          item.title = title.trim()
+          item.description = description.trim()
+          item.state = state
+          item.meta = resource
+          item.sync = false
+          item.status = 1
+        })
+      })
+    }
 
     if (isConnected) {
-      RnBgTask.runInBackground_withPriority('NORMAL', () => upload(newTodo.id))
+      RnBgTask.runInBackground_withPriority('NORMAL', () => upload(id || todo.id, uuid))
     }
-    navigation.navigate('Inicio')
+
+    navigation.navigate('ToDo')
   }
 
-  // const onStart = () => {
-  //   // Checking if the task i am going to create already exist and running, which means that the foreground is also running.
-  //   if (ReactNativeForegroundService.is_task_running('taskid')) {return;}
-  //   // Creating a task.
-  //   ReactNativeForegroundService.add_task(upload,
-  //     {
-  //       delay: 100,
-  //       onLoop: true,
-  //       taskId: 'taskid',
-  //       onError: (e) => console.log('Error logging:', e),
-  //     },
-  //   );
-  //   // starting  foreground service.
-  //   return ReactNativeForegroundService.start({
-  //     id: 144,
-  //     title: 'Foreground Service',
-  //     message: 'you are online!',
-  //   });
-  // };
-
-  // const onStop = () => {
-  //   // Make always sure to remove the task before stoping the service. and instead of re-adding the task you can always update the task.
-  //   if (ReactNativeForegroundService.is_task_running('taskid')) {
-  //     ReactNativeForegroundService.remove_task('taskid');
-  //   }
-  //   // Stoping Foreground service.
-  //   return ReactNativeForegroundService.stop();
-  // };
-
-  const upload = async (id) => {
+  const upload = async (id, uuid) => {
     const resource = response?.assets && response?.assets[0]
     if (resource) {
-      await RNFetchBlob.fetch('POST', 'http://prueba.navego360.com/index.php/sync/push', {
-        otherHeader: 'foo',
-        // this is required, otherwise it won't be process as a multipart/form-data request
+      await RNFetchBlob.fetch('POST', 'http://prueba.navego360.com/index.php/sync/save', {
         'Content-Type': 'multipart/form-data'
       }, [
         // append field data from file path
         {
           name: 'files.file',
           filename: resource?.fileName,
-          // Change BASE64 encoded data to a file path with prefix `RNFetchBlob-file://`.
-          // Or simply wrap the file path with RNFetchBlob.wrap().
           data: RNFetchBlob.wrap(resource?.uri)
         },
-        // elements without property `filename` will be sent as plain text
         {
           name: 'task',
           data: JSON.stringify({
             title: title,
-            description: description
+            description: description,
+            state: state
           })
+        },
+        {
+          name: 'uid', data: uuid
         }
-      ]).then(async (resp) => {
-        // console.log(1, resp);
-        const todoUpdate = await database.collections.get('todo').find(id)
-        await database.action(async () => {
-          await todoUpdate.update(item => {
-            item.sync = true
+      ]).then(async response => {
+        const status = response.info().status
+        if (status === 200) {
+          const findTodo = await database.collections.get('todos').find(id)
+          await database.action(async () => {
+            await findTodo.update(item => {
+              item.sync = true
+              item._raw._status = 'synced'
+            })
           })
-        })
-        // navigation.navigate('Inicio')
-      }).catch((err) => {
-        Alert.alert('ToDo', err)
+          const data = await response.json()
+          ToastAndroid.showWithGravity(data.message, ToastAndroid.LONG, ToastAndroid.BOTTOM)
+        }
+      }).catch((error) => {
+        console.log(error)
       })
     }
   }
 
+  const getStateName = () => {
+    const obj = states.find(item => item.value === state)
+    return obj.name
+  }
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <ScrollView>
-        <View style={{ padding: 15 }}>
-          <Title>Nueva tarea</Title>
+      <KeyboardAwareScrollView>
+        <View style={{ padding: 15, paddingBottom: !isConnected ? 60 : 15 }}>
+          <Title>{id ? 'Editar tarea' : 'Crear tarea'}</Title>
           <View style={{ marginTop: 10 }}>
             <TextInput
               label="Titulo"
@@ -168,7 +195,6 @@ const CreateScreen = ({ navigation, route }) => {
             <TextInput
               label="Descripción"
               placeholder="Ingrese una descripción"
-              multiline
               value={description}
               onChangeText={text => setDescription(text)}
               dense
@@ -176,17 +202,35 @@ const CreateScreen = ({ navigation, route }) => {
               autoCapitalize="none"
             />
           </View>
+          <Text style={{ fontWeight: 'bold', fontSize: 16, marginVertical: 10 }}>Estado</Text>
+          <View style={{ marginTop: 10 }}>
+            <TouchableOpacity onPress={() => setShowStates(true)}>
+              <View style={{
+                borderWidth: 1,
+                display: 'flex',
+                flexDirection: 'row',
+                paddingVertical: 10,
+                borderRadius: 4,
+                justifyContent: 'space-between',
+                paddingHorizontal: 15,
+                borderColor: '#707070'
+              }}>
+                <Text>{ getStateName() }</Text>
+                <Icon name="chevron-down" size={20} />
+              </View>
+            </TouchableOpacity>
+          </View>
           <View style={{ marginTop: 10 }}>
             <Button onPress={() => setIsVisible(true)}>
-              Agregar foto
+              {id ? 'Actualizar foto' : 'Agregar foto'}
             </Button>
           </View>
           {response?.assets &&
             response?.assets.map(({ uri }) => (
               <View key={uri} style={{ alignItems: 'center', marginVertical: 10 }}>
                 <Image
-                  resizeMode="cover"
-                  resizeMethod="scale"
+                  resizeMode="center"
+                  resizeMethod="auto"
                   style={{ width: 200, height: 200 }}
                   source={{ uri: uri }}
                 />
@@ -198,25 +242,43 @@ const CreateScreen = ({ navigation, route }) => {
             </Button>
           </View>
         </View>
-        <Portal>
-          <Dialog visible={isVisible} onDismiss={() => setIsVisible(false)}>
-            <Dialog.Title>Seleccione imagen</Dialog.Title>
-            <Dialog.Content>
-              <List.Item
-                title="Tomar imagen"
-                onPress={takeImage}
-              />
-              <List.Item
-                title="Seleccionar imagen"
-                onPress={selectImage}
-              />
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={() => setIsVisible(false)}>Cancelar</Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
-      </ScrollView>
+      </KeyboardAwareScrollView>
+      <Portal>
+
+        <Dialog visible={isVisible} onDismiss={() => setIsVisible(false)}>
+          <Dialog.Title>Seleccione imagen</Dialog.Title>
+          <Dialog.Content>
+            <List.Item
+              title="Tomar imagen"
+              onPress={takeImage}
+            />
+            <List.Item
+              title="Seleccionar imagen"
+              onPress={selectImage}
+            />
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setIsVisible(false)}>Cerrar</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        <Dialog visible={showStates} onDismiss={() => setShowStates(false)}>
+          <Dialog.Title>Seleccione un estado</Dialog.Title>
+          <Dialog.Content>
+            <RadioButton.Group onValueChange={value => setState(value)} value={state}>
+            {
+              states.map(item => (
+                <RadioButton.Item key={item.id} label={item.name} value={item.value} />
+              ))
+            }
+            </RadioButton.Group>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowStates(false)}>Cerrar</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+      </Portal>
     </SafeAreaView>
   )
 }
