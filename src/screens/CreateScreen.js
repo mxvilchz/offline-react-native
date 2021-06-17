@@ -39,6 +39,7 @@ const CreateScreen = ({ navigation, route }) => {
   const [response, setResponse] = React.useState(null)
   const [disabled, setDisabled] = React.useState(false)
   const [id, setId] = React.useState(null)
+  const [path, setPath] = React.useState('')
 
   const [showStates, setShowStates] = React.useState(false)
   const [state, setState] = React.useState(1)
@@ -61,6 +62,7 @@ const CreateScreen = ({ navigation, route }) => {
         setDescription(todo.description)
         setState(todo.state)
         setResponse({ assets: [todo.meta] })
+        setPath(JSON.stringify(todo.meta))
       }
       setId(id)
     }
@@ -236,6 +238,7 @@ const CreateScreen = ({ navigation, route }) => {
                 />
               </View>
             ))}
+          <Text>{ path }</Text>
           <View style={{ marginTop: 10 }}>
             <Button onPress={handleSave} mode="contained" disabled={disabled}>
               Guardar
