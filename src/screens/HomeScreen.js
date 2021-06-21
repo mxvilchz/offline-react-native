@@ -16,17 +16,20 @@ import BackgroundFetch from 'react-native-background-fetch'
 import ReactNativeForegroundService from '@supersami/rn-foreground-service'
 import { useIsFocused } from '@react-navigation/native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import messaging from '@react-native-firebase/messaging'
 
 import TodoItem from '../components/TodoItem'
 
 import { database } from '../models'
 import { pull, push } from '../utils/sync'
+import { showNotification } from '../utils/notifService'
 
 const HomeScreen = ({ navigation, todos }) => {
   const [isConnected, setIsConnected] = React.useState(true)
   const [showDialogDelete, setShowDialogDelete] = React.useState(false)
   const [deleteId, setDeleteId] = React.useState(null)
   const [serviceType, setServiceType] = React.useState([])
+  const [subscribedTopic, setSubscribedTopic] = React.useState('')
 
   const isFocused = useIsFocused()
 
@@ -44,11 +47,27 @@ const HomeScreen = ({ navigation, todos }) => {
   }, [navigation])
 
   React.useEffect(() => {
-    verifyServiceForegroundFetch()
-    const unsubscribe = NetInfo.addEventListener(state => {
+    const unsubscribeNetInfo = NetInfo.addEventListener(state => {
       setIsConnected(state.isConnected)
     })
-    return () => unsubscribe()
+    const unsubscribeMessaging = messaging().onMessage(async remoteMessage => {
+      console.log('A new FCM message arrived!', JSON.stringify(remoteMessage))
+      if (remoteMessage) {
+        const { data } = remoteMessage
+        syncData()
+        showNotification(data.title, data.body)
+      }
+    })
+    messaging()
+      .subscribeToTopic('todo-all')
+      .then(() => setSubscribedTopic('Suscrito a topic!'))
+      .catch(error => {
+        console.log(error)
+      })
+    return () => {
+      unsubscribeNetInfo()
+      unsubscribeMessaging()
+    }
   }, [])
 
   React.useEffect(() => {
@@ -56,6 +75,36 @@ const HomeScreen = ({ navigation, todos }) => {
       verifyServiceForegroundFetch()
     }
   }, [isFocused])
+
+  React.useEffect(() => {
+    checkPermission()
+    initiBackgroundFetch()
+    verifyServiceForegroundFetch()
+  }, [])
+
+  // revisar el permiso para las notificaciones
+  const checkPermission = () => {
+    messaging().hasPermission()
+      .then(enabled => {
+        if (!enabled) {
+          requestPermission()
+        }
+      })
+      .catch(error => {
+        console.log('[FCMServices] permiso denegado.', error)
+      })
+  }
+
+  // solicitar el permiso para mostrar las notificaciones
+  const requestPermission = () => {
+    messaging().requestPermission()
+      .then(() => {
+        console.log('[FCMServices] permiso otorgado.')
+      })
+      .catch(error => {
+        console.log('[FCMServices] solicitud de permiso denegado.', error)
+      })
+  }
 
   const verifyServiceForegroundFetch = () => {
     if (ReactNativeForegroundService.is_task_running('taskid')) {
@@ -119,10 +168,6 @@ const HomeScreen = ({ navigation, todos }) => {
       })
     })
   }
-
-  React.useEffect(() => {
-    initiBackgroundFetch()
-  }, [])
 
   const handleEdit = (id) => {
     navigation.navigate('Nuevo', { id })
@@ -188,6 +233,13 @@ const HomeScreen = ({ navigation, todos }) => {
     navigation.navigate('Settings')
   }
 
+  const syncData = async () => {
+    if (isConnected) {
+      await pull()
+      await push()
+    }
+  }
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <FlatList
@@ -200,7 +252,8 @@ const HomeScreen = ({ navigation, todos }) => {
         }}
         ListHeaderComponent={
           <View style={{ paddingHorizontal: 15, paddingVertical: 10 }}>
-            <Text>running service: {serviceType.join(', ')}</Text>
+            <Text>Service: {serviceType.join(', ')}</Text>
+            <Text>Topic: {subscribedTopic}</Text>
             <Title>Lista de tareas ({todos.length})</Title>
             <TouchableOpacity onPress={goToSettings} style={{ borderWidth: 1, paddingVertical: 6, width: 120, borderRadius: 20, alignItems: 'center' }}>
               <Text>Configuraciones</Text>

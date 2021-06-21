@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "265340611419",
+    "project_id": "piloto-b2dac",
+    "storage_bucket": "piloto-b2dac.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:265340611419:android:3de825eae4e8be1943087e",
+        "android_client_info": {
+          "package_name": "com.todo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "265340611419-4fqjrqoq69ikssre61sn47s0okghk2vk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOTnzWeRA6KBZtP4_BoQLSb8Zo_a6103s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "265340611419-4fqjrqoq69ikssre61sn47s0okghk2vk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -241,28 +241,35 @@ const download = async (arr = []) => {
       const dirs = RNFetchBlob.fs.dirs
       for (let i = 0; i < arr.length; i++) {
         const image = arr[i]
-        await RNFetchBlob
-          .config({
-            fileCache: true,
-            path: dirs.DownloadDir + '/' + image,
-            addAndroidDownloads: {
-              path: dirs.DownloadDir + '/' + image,
-              useDownloadManager: true, // <-- this is the only thing required
-              // Optional, override notification setting (default to true)
-              notification: true,
-              // Optional, but recommended since android DownloadManager will fail when
-              // the url does not contains a file extension, by default the mime type will be text/plain
-              mime: '/',
-              description: 'File downloaded by download manager.'
+        const path = dirs.DownloadDir + '/' + image
+        await RNFetchBlob.fs.exists(path)
+          .then(async (exist) => {
+            if (!exist) {
+              await RNFetchBlob
+                .config({
+                  fileCache: true,
+                  path: path,
+                  addAndroidDownloads: {
+                    path: path,
+                    useDownloadManager: true, // <-- this is the only thing required
+                    // Optional, override notification setting (default to true)
+                    notification: true,
+                    // Optional, but recommended since android DownloadManager will fail when
+                    // the url does not contains a file extension, by default the mime type will be text/plain
+                    mime: '/',
+                    description: 'File downloaded by download manager.'
+                  }
+                })
+                .fetch('GET', `https://prueba.navego360.com/upload/${image}`)
+                .then(async res => {
+                  console.log(res.path())
+                })
+                .catch((errorMessage) => {
+                  console.log(1, errorMessage)
+                })
             }
           })
-          .fetch('GET', `https://prueba.navego360.com/upload/${image}`)
-          .then(async res => {
-            console.log(res.path())
-          })
-          .catch((errorMessage) => {
-            console.log(1, errorMessage)
-          })
+          .catch((err) => { console.log(err) })
       }
     }
   } catch (err) {
